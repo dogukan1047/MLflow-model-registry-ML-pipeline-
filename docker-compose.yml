@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  webserver:
+    image: apache/airflow:latest
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: "lTNSYaQypI6vY2_VVirZUc2tMOPNtRidcWfLyF2DAwo="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__WORKERS: 2
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    entrypoint: >
+      bash -c "
+      pip install mlflow &&
+      airflow webserver
+      "  
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+  scheduler:
+    image: apache/airflow:latest
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: "your_fernet_key"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    entrypoint: >
+      bash -c "
+      pip install mlflow &&
+      airflow webserver
+      "  
+    depends_on:
+      - postgres
+
+  mlflow:
+    image: bitnami/mlflow:latest
+    environment:
+      BACKEND_STORE_URI: sqlite:///mlflow.db
+      ARTIFACT_ROOT: /mlflow/artifacts
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    ports:
+      - "5000:5000"
+
+volumes:
+  postgres_data:
